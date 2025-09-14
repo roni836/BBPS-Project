@@ -20,6 +20,7 @@
             <input type="hidden" name="amount" value="{{ $bill['data']['dueamount'] ?? 0 }}">
             <input type="hidden" name="clientRefId" value="{{ $bill['data']['ClientRefId'] ?? 0 }}">
             <input type="hidden" name="RequestID" value="{{ $bill['data']['RequestID'] ?? 0 }}">
+            <input type="hidden" name="dueamount" value="{{ $bill['data']['dueamount'] ?? 0 }}">
 
             <button class="btn btn-primary">Pay Now</button>
         </form>

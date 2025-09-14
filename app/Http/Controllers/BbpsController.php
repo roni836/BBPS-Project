@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use GuzzleHttp\Client;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -8,29 +9,31 @@ class BbpsController extends Controller
 {
     private $apiKey;
     private $apiBaseUrl;
+    private Client $client;
 
     public function __construct()
     {
         $this->apiKey     = config('services.bbps.api_key');
         $this->apiBaseUrl = config('services.bbps.api_url');
+        $this->client     = new Client([
+            'base_uri' => $this->apiBaseUrl,
+            'headers'  => [
+                'Accept'       => 'application/json',
+                'Content-Type' => 'application/json',
+            ],
+        ]);
     }
 
     public function categories()
     {
-        $client = new \GuzzleHttp\Client();
 
         try {
-            $response = $client->request('POST', "{$this->apiBaseUrl}/category_list", [
-                'json'    => [
+            $response = $this->client->request('POST', "{$this->apiBaseUrl}/category_list", [
+                'json' => [
                     'secret_key' => $this->apiKey,
-                ],
-                'headers' => [
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
                 ],
             ]);
 
-            // Decode JSON response
             $categories = json_decode($response->getBody()->getContents(), true);
 
             return view('bbps.categories', compact('categories'));
@@ -45,16 +48,10 @@ class BbpsController extends Controller
     {
         try {
 
-            $client = new \GuzzleHttp\Client();
-
-            $response = $client->request('POST', "{$this->apiBaseUrl}/biller_list", [
-                'json'    => [
+            $response = $this->client->request('POST', "{$this->apiBaseUrl}/biller_list", [
+                'json' => [
                     'secret_key' => $this->apiKey,
                     'category'   => $category_name,
-                ],
-                'headers' => [
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
                 ],
             ]);
 
@@ -72,17 +69,12 @@ class BbpsController extends Controller
     {
         try {
 
-            $client = new \GuzzleHttp\Client();
-
-            $response = $client->request('POST', "{$this->apiBaseUrl}/bbps_biller_info", [
-                'json'    => [
+            $response = $this->client->request('POST', "{$this->apiBaseUrl}/bbps_biller_info", [
+                'json' => [
                     'secret_key' => $this->apiKey,
                     'biller_id'  => $billerId,
                 ],
-                'headers' => [
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
-                ]]);
+            ]);
 
             $info = json_decode($response->getBody()->getContents(), true);
 
@@ -96,27 +88,18 @@ class BbpsController extends Controller
     public function fetchBillDetails(Request $request)
     {
         try {
-            $billerId = $request->input('biller_id');
-            $fields   = $request->input('fields_info');
-            // fields_info should be sent as: ['Consumer Id' => '123456789', 'Mobile Number' => '9123457897']
-
-            $client = new \GuzzleHttp\Client();
-
-            // Transform into expected API format: array of objects
+            $billerId    = $request->input('biller_id');
+            $fields      = $request->input('fields_info');
             $fieldsArray = [];
             foreach ($fields as $key => $value) {
                 $fieldsArray[] = [$key => $value];
             }
 
-            $response = $client->request('POST', "{$this->apiBaseUrl}/bbps_bill_fetch", [
-                'json'    => [
+            $response = $this->client->request('POST', "{$this->apiBaseUrl}/bbps_bill_fetch", [
+                'json' => [
                     'secret_key'  => $this->apiKey,
                     'biller_id'   => $billerId,
                     'fields_info' => $fieldsArray,
-                ],
-                'headers' => [
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
                 ],
             ]);
 
@@ -137,28 +120,20 @@ class BbpsController extends Controller
         try {
             $billerId    = $request->input('biller_id');
             $amount      = $request->input('amount');
-            $clientRefId = $request->input('clientRefId'); // from bill-details
-            $requestId   = $request->input('RequestID');   // from bill-details
+            $clientRefId = $request->input('clientRefId');
+            $requestId   = $request->input('RequestID');
+            $orderId     = uniqid('ORD');
 
-            // Generate unique order_id (can be random or DB-generated)
-            $orderId = uniqid('ORD');
+            // dd($billerId, $amount, $clientRefId, $requestId, $orderId);
 
-            // dd($billerId, $amount, $clientRefId, $requestId, $orderId); 
-
-            $client = new \GuzzleHttp\Client();
-
-            $response = $client->request('POST', "{$this->apiBaseUrl}/bbps_bill_payment", [
-                'json'    => [
+            $response = $this->client->request('POST', "{$this->apiBaseUrl}/bbps_bill_payment", [
+                'json' => [
                     'secret_key'  => $this->apiKey,
                     'biller_id'   => $billerId,
                     'clientRefId' => $clientRefId,
                     'RequestID'   => $requestId,
                     'order_id'    => $orderId,
                     'amount'      => $amount,
-                ],
-                'headers' => [
-                    'Accept'       => 'application/json',
-                    'Content-Type' => 'application/json',
                 ],
             ]);
 
